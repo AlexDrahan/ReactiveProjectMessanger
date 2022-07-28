@@ -28,13 +28,7 @@ class MessageServiceImpl(
     }
 
     override fun deleteMessage(messageId: String) {
-        messageRepository.findMessageById(messageId)
-            .switchIfEmpty(
-                Mono.error(NotFoundException())
-            )
-            .flatMap(
-                messageRepository::delete
-            ).subscribe()
+        messageRepository.deleteById(messageId).subscribe()
     }
 
     override fun editMessage(id: String, message: Message): Mono<Message> {

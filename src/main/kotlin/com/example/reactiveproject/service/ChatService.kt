@@ -17,6 +17,6 @@ interface ChatService {
 
     fun findAllChats(): Flux<Chat>
 
-//    fun getChatById(chatId: String): FullChat
+    fun getChatById(chatId: String): Mono<FullChat>
 
 }

@@ -21,13 +21,7 @@ class UserServiceImpl(
     }
 
     override fun deleteUser(id: String) {
-        userRepository.findById(id)
-            .switchIfEmpty(
-                Mono.error(NotFoundException())
-            )
-            .flatMap(
-                userRepository::delete
-            ).subscribe()
+        userRepository.deleteById(id).subscribe()
     }
 
     override fun updateUser(id: String, user: User): Mono<User> {

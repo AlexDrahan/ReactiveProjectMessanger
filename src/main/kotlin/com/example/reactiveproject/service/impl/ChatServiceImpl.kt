@@ -2,6 +2,8 @@ package com.example.reactiveproject.service.impl
 
 import com.example.reactiveproject.model.Chat
 import com.example.reactiveproject.model.FullChat
+import com.example.reactiveproject.model.Message
+import com.example.reactiveproject.model.User
 import org.springframework.beans.factory.annotation.Autowired
 import com.example.reactiveproject.repository.ChatRepository
 import com.example.reactiveproject.repository.FullChatRepository
@@ -95,20 +97,42 @@ class ChatServiceImpl(
         return chatRepository.findAll()
     }
 
-//    override fun getChatById(chatId: String): FullChat {
-//        val chat = chatRepository.findChatById(chatId)
-//        val userList = chat!!.userIds!!.map {
-//            userRepository!!.findById(it).get()
-//        }.toList()
-//        val messageList = chat.messageIds!!.map {
-//            messageRepository!!.findById(it).get()
-//        }.toList()
-//
-//        val fullChat = FullChat(chat, userList, messageList)
-//        fullChatRepository.save(fullChat)
-//        return fullChat
-//
-//    }
+    override fun getChatById(chatId: String): Mono<FullChat> {
+
+        val chat = chatRepository.findChatById(chatId)
+
+        val userF = chatRepository.findChatById(chatId)
+            .switchIfEmpty(
+                Mono.error(NotFoundException())
+            )
+            .flatMapIterable {
+                it!!.userIds!!
+            }
+            .flatMap { userRepository!!.findById(it)}
+            .collectList()
+
+        val messageF = chatRepository.findChatById(chatId)
+            .switchIfEmpty(
+                Mono.error(NotFoundException())
+            )
+            .flatMapIterable {
+                it!!.messageIds!!
+            }
+            .flatMap { messageRepository!!.findById(it)}
+            .collectList()
+
+        return Mono.zip(chat, userF, messageF)
+            .flatMap {
+                fullChatRepository.save(FullChat(
+                    chat = it.t1,
+                    userList = it.t2,
+                    messageList = it.t3
+                ))
+            }
+
+
+
+    }
 
 
 }

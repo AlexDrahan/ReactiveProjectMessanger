@@ -18,9 +18,7 @@ import reactor.core.publisher.Mono
 
 @Service
 class ChatServiceImpl(
-    @Autowired
     val chatRepository: ChatRepository,
-    @Autowired
     val userRepository: UserRepository?,
     val fullChatRepository: FullChatRepository,
     val messageRepository: MessageRepository?
@@ -31,15 +29,8 @@ class ChatServiceImpl(
             .subscribe()
     }
 
-    override fun deleteChat(name: String) {
-        chatRepository.findByName(name)
-            .switchIfEmpty(
-                Mono.error(NotFoundException())
-            )
-            .flatMap(
-                chatRepository::delete
-            )
-            .subscribe()
+    override fun deleteChat(id: String) {
+        chatRepository.deleteById(id).subscribe()
     }
 
     override fun addUserToTheChat(chatId: String, userId: String) {

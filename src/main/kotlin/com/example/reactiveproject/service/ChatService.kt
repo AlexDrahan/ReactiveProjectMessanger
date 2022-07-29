@@ -9,7 +9,7 @@ import reactor.core.publisher.Mono
 interface ChatService {
 
     fun createChat(chat: Chat)
-    fun deleteChat(name: String)
+    fun deleteChat(id: String)
 
     fun addUserToTheChat(chatId: String, userId: String)
 

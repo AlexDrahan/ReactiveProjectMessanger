@@ -21,15 +21,10 @@ class UserServiceImpl(
     }
 
     override fun deleteUser(id: String) {
-        userRepository.deleteById(id).subscribe()
+       userRepository.deleteById(id).subscribe()
     }
 
     override fun updateUser(id: String, user: User): Mono<User> {
-//        val userToUpdate: User = userRepository.findById(user.id!!).get()
-//            .copy(name = user.name,
-//                phoneNumber = user.phoneNumber,
-//                bio = user.bio)
-//        userRepository.save(userToUpdate)
 
         return userRepository.findById(id)
             .map {

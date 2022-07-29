@@ -1,50 +1,45 @@
 package com.example.reactiveproject.controller
 
-
 import com.example.reactiveproject.model.Chat
-import com.example.reactiveproject.model.FullChat
-import com.example.reactiveproject.model.User
 import com.example.reactiveproject.repository.ChatRepository
 import com.example.reactiveproject.repository.MessageRepository
 import com.example.reactiveproject.repository.UserRepository
-import com.example.reactiveproject.service.ChatService
+import com.example.reactiveproject.repository.FullChatRepository
+import com.example.reactiveproject.service.impl.ChatServiceImpl
+import com.example.reactiveproject.service.impl.MessageServiceImpl
+import com.example.reactiveproject.service.impl.UserServiceImpl
 import org.bson.types.ObjectId
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.Mockito
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.test.web.client.TestRestTemplate
-import org.springframework.boot.test.web.server.LocalServerPort
-import org.springframework.http.HttpEntity
+import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
+import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.context.annotation.Import
 import org.springframework.http.HttpHeaders
-import org.springframework.http.HttpMethod
-import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.junit.jupiter.SpringExtension
+import org.springframework.test.web.reactive.server.WebTestClient
+import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
 
-@ActiveProfiles("test")
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ExtendWith(SpringExtension::class)
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@WebFluxTest(controllers = [ChatController::class])
+@Import(ChatServiceImpl::class, UserServiceImpl::class, MessageServiceImpl::class)
 internal class ChatControllerTest{
 
-    @Autowired
-    private lateinit var chatService: ChatService
-    @Autowired
+    @MockBean
     private lateinit var chatRepository: ChatRepository
-    @Autowired
+    @MockBean
     private lateinit var userRepository: UserRepository
-    @Autowired
+    @MockBean
     private lateinit var messageRepository: MessageRepository
+    @MockBean
+    private lateinit var fullChatRepository: FullChatRepository
+
+
     @Autowired
-    private lateinit var restTemplate: TestRestTemplate
-
-
-    @LocalServerPort
-    protected var port: Int = 0
-
-
+    private lateinit var webClient: WebTestClient
 
     fun randomName(): String = List(10) {
         (('a'..'z') + ('A'..'Z')).random()
@@ -58,96 +53,46 @@ internal class ChatControllerTest{
 
     fun prepareChatData(): Chat {
         val chat = Chat(
+            id = ObjectId.get().toString(),
             name = randomName(),
             userIds = setOf(ObjectId.get().toString()),
             messageIds = listOf(ObjectId.get().toString())
         )
         return chat
     }
-    
-    fun prepareUserData(): User {
-        val user = User(
-            name = randomName(),
-            phoneNumber = "+" + randomPhone(),
-            bio = randomBio(),
-            chat = emptyList(),
-            message = emptyList()
-        )
-        return user
-    }
+
 
     @Test
-    fun `should add user in chat`(){
+    fun `should delete chat`(){
+        val chat = prepareChatData()
+        val empty: Mono<Void> = Mono.empty()
 
-        var prepareChat = chatRepository.save(prepareChatData())
-        var prepareUser = userRepository.save(prepareUserData())
+        Mockito.`when`(chatRepository.deleteById(chat.id!!)).thenReturn(empty)
 
-       // val user = userRepository.findByName("Anton")
+        webClient.delete().uri("http://localhost:8081/chat/chats-delete/{id}", chat.id)
+            .header(HttpHeaders.ACCEPT, "application/json")
+            .exchange()
+            .expectStatus().isOk
 
-        var newChat = chatRepository.findByName(prepareChat.name!!)
-//        var newUserIds: HashSet<String>? = newChat?.userIds as HashSet<String>
-//        newUserIds!!.add(user!!.id!!)
-//        newChat.userIds = newUserIds
-
-        val updateResponse = restTemplate.exchange(
-            "http://localhost:$port/chat/chats-add/${prepareUser.name}",
-            HttpMethod.PUT,
-            HttpEntity(newChat, HttpHeaders()),
-            Chat::class.java
-        )
-
-        val chatAfterAddingUser = chatRepository.findByName(newChat.name!!)
-        assertEquals(newChat, chatAfterAddingUser)
-
+        Mockito.verify(chatRepository, Mockito.times(1)).deleteById(chat.id!!)
     }
-
     @Test
-    fun `should delete user from chat`(){
+    fun `should find all chats`(){
+        val chat1 = prepareChatData()
+        val chat2 = prepareChatData()
+        val chat3 = prepareChatData()
 
-//        val user = userRepository.findByName("Anton")
-//
-//
-//        var newUserIds: HashSet<String>? = newChat.userIds as HashSet<String>
-//        newUserIds!!.remove(user!!.id!!)
-//        newChat.userIds = newUserIds
+        val list = listOf(chat1, chat2, chat3)
+        val chatFlux = Flux.fromIterable(list)
 
-        var newChat = chatRepository.findByName("Oleksandr-Maxym")
+        Mockito.`when`(chatRepository.findAll()).thenReturn(chatFlux)
 
-        val updateResponse = restTemplate.exchange(
-            "http://localhost:$port/chat/chats-remove/62d68eaf0e586068f86005d3",
-            HttpMethod.PUT,
-            HttpEntity(newChat, HttpHeaders()),
-            Chat::class.java
-        )
+        webClient.get().uri("http://localhost:8081/chat/chats-all")
+            .header(HttpHeaders.ACCEPT, "application/json")
+            .exchange()
+            .expectStatus().isFound
+            .expectBodyList(Chat::class.java)
 
-        val chatAfterDeleteUser = chatRepository.findByName("Oleksandr-Maxym")
-        assertEquals(newChat, chatAfterDeleteUser)
-
+        Mockito.verify(chatRepository, Mockito.times(1)).findAll()
     }
-
-    @Test
-    fun `should get users and messages from lists of ids`(){
-        val chat = chatRepository.findChatById("62dd3b0dd9a83900cfd51dcb")
-
-
-        val updateResponse = restTemplate.getForEntity(
-            "http://localhost:$port/chat/get-chat-id/62dd3b0dd9a83900cfd51dcb",
-            FullChat::class.java
-        )
-
-
-//        val userList = chat!!.userIds!!.map {
-//            userRepository!!.findById(it).get()
-//        }.toList()
-//        val messageList = chat.messageIds!!.map {
-//            messageRepository!!.findById(it).get()
-//        }.toList()
-//
-//        var fullChat = FullChat(chat, userList, messageList)
-
-
-
-    }
-
-
 }

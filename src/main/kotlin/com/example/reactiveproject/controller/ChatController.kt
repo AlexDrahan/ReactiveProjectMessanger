@@ -25,9 +25,9 @@ class ChatController (
         chatService.addUserToTheChat(chatId, userId)
     }
 
-    @DeleteMapping("/chats/{name}")
-    fun delete(@PathVariable("name") name: String) {
-        chatService.deleteChat(name)
+    @DeleteMapping("/chats-delete/{id}")
+    fun delete(@PathVariable("id") id: String) {
+        chatService.deleteChat(id)
     }
 
     @GetMapping("/chats-all")

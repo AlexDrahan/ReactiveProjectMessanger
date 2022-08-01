@@ -12,6 +12,8 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.ArgumentMatchers
+import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
@@ -57,6 +59,48 @@ internal class MessageControllerTest{
         return message
     }
 
+
+    @Test
+    fun `should create message`(){
+        val message = prepareData()
+
+        Mockito.`when`(messageRepository.save(any(Message::class.java))).thenReturn(Mono.just(message))
+
+        webClient.post().uri("http://localhost:8081/message/messages-create")
+            .header(HttpHeaders.ACCEPT, "application/json")
+            .body(Mono.just(message), Message::class.java)
+            .exchange()
+            .expectStatus().isCreated
+            .expectBody()
+
+        Mockito.verify(messageRepository, Mockito.times(1)).save(any(Message::class.java))
+    }
+
+    @Test
+    fun `should update user`(){
+        val message = prepareData()
+        Mockito.`when`(messageRepository.save(any(Message::class.java))).thenReturn(Mono.just(message))
+        Mockito.`when`(messageRepository.findMessageById(message.id!!)).thenReturn(Mono.just(message))
+
+        val messageUp = messageRepository.findMessageById(message.id!!)
+            .map {
+                Message(
+                    id = message.id,
+                    text = message.text,
+                    datetime = LocalDateTime.now().toString())
+            }
+            .flatMap(
+                messageRepository::save
+            )
+            .subscribe()
+
+        webClient.put().uri("http://localhost:8081/message/messages-edit/{id}", message.id)
+            .header(HttpHeaders.ACCEPT, "application/json")
+            .body(Mono.just(message), Message::class.java)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+    }
     @Test
     fun `should delete message`(){
         val message = prepareData()

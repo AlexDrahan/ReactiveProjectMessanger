@@ -35,7 +35,6 @@ class ChatServiceImpl(
 
     override fun addUserToTheChat(chatId: String, userId: String) {
 
-
         userRepository!!.findById(userId)
             .switchIfEmpty(
                 Mono.error(NotFoundException())
@@ -90,7 +89,7 @@ class ChatServiceImpl(
 
     override fun getChatById(chatId: String): Mono<FullChat> {
 
-        val chat = chatRepository.findChatById(chatId)
+
 
         val userF = chatRepository.findChatById(chatId)
             .switchIfEmpty(
@@ -111,6 +110,8 @@ class ChatServiceImpl(
             }
             .flatMap { messageRepository!!.findById(it)}
             .collectList()
+
+        val chat = chatRepository.findChatById(chatId)
 
         return Mono.zip(chat, userF, messageF)
             .flatMap {

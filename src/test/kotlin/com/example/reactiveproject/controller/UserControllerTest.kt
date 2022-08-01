@@ -15,9 +15,11 @@ import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.context.annotation.Import
 import org.springframework.http.HttpHeaders
+import org.springframework.http.MediaType
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import org.springframework.test.web.reactive.server.WebTestClient
 import org.springframework.test.web.reactive.server.expectBodyList
+import org.springframework.web.reactive.function.BodyInserters
 import reactor.core.publisher.Mono
 
 @ExtendWith(SpringExtension::class)
@@ -55,6 +57,68 @@ internal class UserControllerTest{
         return user
     }
 
+
+    @Test
+    fun `should create user`(){
+        val user = prepareData()
+
+        Mockito.`when`(userRepository.save(user)).thenReturn(Mono.just(user))
+
+        webClient.post().uri("http://localhost:8081/user/users-create")
+            .header(HttpHeaders.ACCEPT, "application/json")
+            .body(Mono.just(user), User::class.java)
+            .exchange()
+            .expectStatus().isCreated
+            .expectBody()
+
+        Mockito.verify(userRepository, Mockito.times(1)).save(user)
+
+    }
+
+    @Test
+    fun `should update user`(){
+        val user = prepareData()
+        Mockito.`when`(userRepository.save(user)).thenReturn(Mono.just(user))
+        Mockito.`when`(userRepository.findById(user.id!!)).thenReturn(Mono.just(user))
+
+        val userUp = userRepository.findById(user.id!!)
+            .map {
+                User(
+                    id = user.id,
+                    name = user.name,
+                    phoneNumber = user.phoneNumber,
+                    bio = user.bio,
+                    chat = user.chat,
+                    message = user.message
+                )
+            }
+            .flatMap(
+                userRepository::save
+            )
+            .subscribe()
+
+        webClient.put().uri("http://localhost:8081/user/users-update/{id}", user.id)
+            .header(HttpHeaders.ACCEPT, "application/json")
+            .body(Mono.just(user), User::class.java)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+    }
+
+    @Test
+    fun `should delete user`(){
+        val user = prepareData()
+        val empty: Mono<Void> = Mono.empty<Void?>()
+
+        Mockito.`when`(userRepository.deleteById(user.id!!)).thenReturn(empty)
+
+        webClient.delete().uri("http://localhost:8081/user/users-delete/{id}", user.id)
+            .header(HttpHeaders.ACCEPT, "application/json")
+            .exchange()
+            .expectStatus().isOk
+
+        Mockito.verify(userRepository, Mockito.times(1)).deleteById(user.id!!)
+    }
     @Test
     fun `should find user by id`(){
         val user = prepareData()
@@ -102,20 +166,9 @@ internal class UserControllerTest{
         Mockito.verify(userRepository, Mockito.times(1)).findByPhoneNumber(user.phoneNumber)
     }
 
-    @Test
-    fun `should delete user`(){
-        val user = prepareData()
-        val empty: Mono<Void> = Mono.empty<Void?>()
 
-        Mockito.`when`(userRepository.deleteById(user.id!!)).thenReturn(empty)
 
-        webClient.delete().uri("http://localhost:8081/user/users-delete/{id}", user.id)
-            .header(HttpHeaders.ACCEPT, "application/json")
-            .exchange()
-            .expectStatus().isOk
 
-        Mockito.verify(userRepository, Mockito.times(1)).deleteById(user.id!!)
-    }
 
 
 }

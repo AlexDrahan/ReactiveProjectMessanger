@@ -98,7 +98,9 @@ class ChatServiceImpl(
             .flatMapIterable {
                 it!!.userIds!!
             }
-            .flatMap { userRepository!!.findById(it)}
+            .flatMap {
+                userRepository!!.findById(it)
+            }
             .collectList()
 
         val messageF = chatRepository.findChatById(chatId)
@@ -108,7 +110,9 @@ class ChatServiceImpl(
             .flatMapIterable {
                 it!!.messageIds!!
             }
-            .flatMap { messageRepository!!.findById(it)}
+            .flatMap {
+                messageRepository!!.findById(it)
+            }
             .collectList()
 
         val chat = chatRepository.findChatById(chatId)

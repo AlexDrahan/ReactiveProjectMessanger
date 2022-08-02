@@ -31,6 +31,9 @@ dependencies {
 	implementation("io.projectreactor.kotlin:reactor-kotlin-extensions")
 	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
 	testImplementation("io.projectreactor:reactor-test")
+	// https://mvnrepository.com/artifact/io.projectreactor/reactor-tools
+	implementation("io.projectreactor:reactor-tools:3.4.21")
+
 
 }
 tasks.test {

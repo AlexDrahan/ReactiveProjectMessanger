@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.ArgumentMatchers
+import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
@@ -28,6 +29,7 @@ import org.springframework.test.web.reactive.server.WebTestClient
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.kotlin.core.publisher.toMono
+import reactor.tools.agent.ReactorDebugAgent
 import java.time.LocalDateTime
 
 @ExtendWith(SpringExtension::class)
@@ -58,12 +60,12 @@ internal class ChatControllerTest{
         (('a'..'z')).random()
     }.joinToString("")
 
-    fun prepareChatData(): Chat {
+    fun prepareChatData(userId: String, messageId: String): Chat {
         val chat = Chat(
             id = ObjectId.get().toString(),
             name = randomName(),
-            userIds = setOf(ObjectId.get().toString()),
-            messageIds = listOf(ObjectId.get().toString())
+            userIds = setOf(userId),
+            messageIds = listOf(messageId)
         )
         return chat
     }
@@ -95,7 +97,9 @@ internal class ChatControllerTest{
     }
     @Test
     fun `should create chat`(){
-        val chat = prepareChatData()
+        val user = prepareUserData()
+        val message = prepareData()
+        val chat = prepareChatData(user.id!!, message.id!!)
 
         Mockito.`when`(chatRepository.save(chat)).thenReturn(Mono.just(chat))
 
@@ -111,8 +115,9 @@ internal class ChatControllerTest{
 
     @Test
     fun `should add user to chat`(){
-        var chat = prepareChatData()
         var user = prepareUserData()
+        var message = prepareData()
+        var chat = prepareChatData(user.id!!, message.id!!)
         Mockito.`when`(chatRepository.save(chat)).thenReturn(Mono.just(chat))
         Mockito.`when`(chatRepository.findChatById(chat.id!!)).thenReturn(Mono.just(chat))
         Mockito.`when`(userRepository.findById(user.id!!)).thenReturn(Mono.just(user))
@@ -128,8 +133,9 @@ internal class ChatControllerTest{
 
     @Test
     fun `should delete user from chat chat`(){
-        var chat = prepareChatData()
-        var user = prepareUserData()
+        val user = prepareUserData()
+        val message = prepareData()
+        val chat = prepareChatData(user.id!!, message.id!!)
         Mockito.`when`(chatRepository.save(chat)).thenReturn(Mono.just(chat))
         Mockito.`when`(chatRepository.findChatById(chat.id!!)).thenReturn(Mono.just(chat))
         Mockito.`when`(userRepository.findById(user.id!!)).thenReturn(Mono.just(user))
@@ -145,7 +151,9 @@ internal class ChatControllerTest{
 
     @Test
     fun `should delete chat`(){
-        val chat = prepareChatData()
+        val user = prepareUserData()
+        val message = prepareData()
+        val chat = prepareChatData(user.id!!, message.id!!)
         val empty: Mono<Void> = Mono.empty()
 
         Mockito.`when`(chatRepository.deleteById(chat.id!!)).thenReturn(empty)
@@ -160,13 +168,16 @@ internal class ChatControllerTest{
 
     @Test
     fun `should get full chat by chat id`(){
-        var chat = prepareChatData()
+        ReactorDebugAgent.init()
         var user = prepareUserData()
         var message = prepareData()
+        var chat = prepareChatData(user.id!!, message.id!!)
+
         Mockito.`when`(chatRepository.findChatById(chat.id!!)).thenReturn(Mono.just(chat))
         Mockito.`when`(userRepository.findById(user.id!!)).thenReturn(Mono.just(user))
         Mockito.`when`(messageRepository.findById(message.id!!)).thenReturn(Mono.just(message))
-        //Mockito.`when`(fullChatRepository.save())
+        var fullchat = FullChat(chat, listOf(user), listOf(message))
+        Mockito.`when`(fullChatRepository.save(any(FullChat::class.java))).thenReturn(fullchat.toMono())
 
 
         webClient.get().uri("http://localhost:8081/chat/get-chat-id/{id}", chat.id)
@@ -178,9 +189,11 @@ internal class ChatControllerTest{
 
     @Test
     fun `should find all chats`(){
-        val chat1 = prepareChatData()
-        val chat2 = prepareChatData()
-        val chat3 = prepareChatData()
+        val user = prepareUserData()
+        val message = prepareData()
+        val chat1 = prepareChatData(user.id!!, message.id!!)
+        val chat2 = prepareChatData(user.id!!, message.id!!)
+        val chat3 = prepareChatData(user.id!!, message.id!!)
 
         val list = listOf(chat1, chat2, chat3)
         val chatFlux = Flux.fromIterable(list)
